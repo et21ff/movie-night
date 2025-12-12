@@ -90,7 +90,7 @@ func main() {
 
 	// 6. 启动 MPV
 	go startMPV("http://localhost:8888/stream")
-	monitorMPV(t)
+	go monitorMPV(t)
 
 	// 7. (复刻你的 awk 脚本) 实时推送状态到 MPV
 	// 等待 MPV 启动并创建 Socket

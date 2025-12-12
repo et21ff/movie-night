@@ -77,6 +77,7 @@ func NewNode(ctx context.Context, listenIP string) (*P2PNode, error) {
 		ctx:    ctx,
 	}
 
+	h.Network().Notify(&netNotifiee{})
 	// 4. 启动后台协程 (Goroutine)：处理 UDP 广播发现
 	// `go` 关键字意味着这行代码会立即返回，startDiscovery 在后台并发运行
 	go node.startDiscovery(listenIP)
@@ -265,3 +266,25 @@ func (n *P2PNode) readLoop() {
 		}
 	}
 }
+
+// netNotifiee 实现 network.Notifiee 接口，用于监听底层连接事件
+type netNotifiee struct{}
+
+// 当有新连接建立时（无论是主动还是被动）触发
+func (n *netNotifiee) Connected(net network.Network, conn network.Conn) {
+	fmt.Printf("🤝 [Network] 连接建立: %s (方向: %s)\n",
+		conn.RemotePeer().String()[:10]+"...", // 只打印 ID 前10位
+		conn.Stat().Direction.String(),        // 打印是 Inbound(被动) 还是 Outbound(主动)
+	)
+}
+
+// 当连接断开时触发
+func (n *netNotifiee) Disconnected(net network.Network, conn network.Conn) {
+	fmt.Printf("👋 [Network] 连接断开: %s\n", conn.RemotePeer().String()[:10]+"...")
+}
+
+// 下面这些接口必须实现，但我们可以留空
+func (n *netNotifiee) Listen(network.Network, multiaddr.Multiaddr)      {}
+func (n *netNotifiee) ListenClose(network.Network, multiaddr.Multiaddr) {}
+func (n *netNotifiee) OpenedStream(network.Network, network.Stream)     {}
+func (n *netNotifiee) ClosedStream(network.Network, network.Stream)     {}
