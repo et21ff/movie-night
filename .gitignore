@@ -1,0 +1,18 @@
+# Nix / Direnv 缓存
+.direnv/
+result
+
+# Go 编译产物
+*.exe
+*.test
+*.out
+main
+/bin/
+
+# 下载的电影文件 (绝对不能传上去)
+downloads/
+
+# 编辑器配置
+.vscode/
+.idea/
+*.swp
