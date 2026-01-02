@@ -1,6 +1,7 @@
 package mpv
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -32,12 +33,21 @@ func startMockMpvServer(t *testing.T, socketPath string, cmdChan chan string) {
 
 func handleConnection(conn net.Conn, cmdChan chan string) {
 	defer conn.Close()
-	buf := make([]byte, 4096)
-	n, err := conn.Read(buf)
+	reader := bufio.NewReader(conn)
+	line, err := reader.ReadString('\n')
 	if err != nil {
 		return
 	}
-	cmdChan <- string(buf[:n])
+	cmdChan <- line
+
+	// 解析 request_id 并发送响应
+	var payload struct {
+		RequestID int `json:"request_id"`
+	}
+	if err := json.Unmarshal([]byte(line), &payload); err == nil {
+		response := fmt.Sprintf(`{"request_id": %d, "error": "success"}`+"\n", payload.RequestID)
+		conn.Write([]byte(response))
+	}
 }
 
 func TestDrawSyncOverlay(t *testing.T) {
@@ -50,7 +60,11 @@ func TestDrawSyncOverlay(t *testing.T) {
 	// Wait for server to start
 	time.Sleep(100 * time.Millisecond)
 
-	controller := NewController(socketPath)
+	controller, err := NewController(socketPath)
+	if err != nil {
+		t.Fatalf("Failed to create controller: %v", err)
+	}
+	defer controller.Close()
 
 	// Test Data
 	states := map[string]PeerSyncState{
@@ -59,7 +73,7 @@ func TestDrawSyncOverlay(t *testing.T) {
 	}
 
 	// Execute
-	err := controller.DrawSyncOverlay(states)
+	err = controller.DrawSyncOverlay(states)
 	if err != nil {
 		t.Fatalf("DrawSyncOverlay failed: %v", err)
 	}
@@ -75,15 +89,15 @@ func TestDrawSyncOverlay(t *testing.T) {
 		}
 
 		// Check Command Structure
-		// ["osd-overlay", 1, "ass-events", <content>]
+		// ["osd-overlay", 42, "ass-events", <content>]
 		if len(payload.Command) != 4 {
 			t.Fatalf("Unexpected command length: %d", len(payload.Command))
 		}
 		if payload.Command[0] != "osd-overlay" {
 			t.Errorf("Expected command 'osd-overlay', got %v", payload.Command[0])
 		}
-		if fmt.Sprintf("%v", payload.Command[1]) != "1" {
-			t.Errorf("Expected overlay id 1, got %v", payload.Command[1])
+		if fmt.Sprintf("%v", payload.Command[1]) != "42" {
+			t.Errorf("Expected overlay id 42, got %v", payload.Command[1])
 		}
 
 		assContent := payload.Command[3].(string)
@@ -120,9 +134,13 @@ func TestClearSyncOverlay(t *testing.T) {
 	startMockMpvServer(t, socketPath, cmdChan)
 	time.Sleep(100 * time.Millisecond)
 
-	controller := NewController(socketPath)
+	controller, err := NewController(socketPath)
+	if err != nil {
+		t.Fatalf("Failed to create controller: %v", err)
+	}
+	defer controller.Close()
 
-	err := controller.ClearSyncOverlay()
+	err = controller.ClearSyncOverlay()
 	if err != nil {
 		t.Fatalf("ClearSyncOverlay failed: %v", err)
 	}
@@ -133,6 +151,12 @@ func TestClearSyncOverlay(t *testing.T) {
 			Command []interface{} `json:"command"`
 		}
 		json.Unmarshal([]byte(cmdJSON), &payload)
+		
+		// Check overlay id
+		if fmt.Sprintf("%v", payload.Command[1]) != "42" {
+			t.Errorf("Expected overlay id 42, got %v", payload.Command[1])
+		}
+
 		assContent := payload.Command[3].(string)
 		if assContent != "" {
 			t.Errorf("Expected empty ASS content for clear, got '%s'", assContent)

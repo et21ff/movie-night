@@ -21,8 +21,7 @@ func (c *Controller) DrawSyncOverlay(states map[string]PeerSyncState) error {
 
 	// 标题样式: 居中(\an5), 字号48(\fs48), 加粗(\b1), 亮青色(\c&HFFFF00&) - 注意ASS颜色是BGR
 	// 这里使用简单的白色或亮色作为标题
-	sb.WriteString(`{\an5\fs48\b1\c&HFFFFFF&}Sync Status{\N}{\fs30\b0}`) // 标题后换行，并重置字号
-
+	sb.WriteString(`{\an8\fs48\b1\bord2\3c&H000000&}{\c&HFFFFFF&}Sync Status{\N}{\fs30\b0}`)
 	// 空行
 	sb.WriteString(`{\N}`)
 
@@ -59,14 +58,16 @@ func (c *Controller) DrawSyncOverlay(states map[string]PeerSyncState) error {
 
 	assContent := sb.String()
 
+	fmt.Println("ASS Content:", assContent)
+
 	// 4. 发送 IPC 命令
 	// 命令格式: ["osd-overlay", <overlay_id>, "ass-events", <ass_content_string>]
 	// overlay_id = 1
-	return c.sendCommand("osd-overlay", 1, "ass-events", assContent)
+	return c.sendCommand("osd-overlay", 42, "ass-events", assContent)
 }
 
 // ClearSyncOverlay 清除同步状态面板
 func (c *Controller) ClearSyncOverlay() error {
 	// 发送空字符串以清除
-	return c.sendCommand("osd-overlay", 1, "ass-events", "")
+	return c.sendCommand("osd-overlay", 42, "ass-events", "")
 }

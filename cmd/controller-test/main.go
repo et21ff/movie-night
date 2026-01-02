@@ -18,7 +18,12 @@ var socketPath = filepath.Join(os.TempDir(), "mpv-socket")
 func main() {
 	// 1. 初始化控制器
 	// 只要主程序运行中，这个 Socket 文件就存在，我们直接连上去
-	ctrl := mpv.NewController(socketPath)
+	ctrl, err := mpv.NewController(socketPath)
+	if err != nil {
+		fmt.Printf("❌ 无法连接到 MPV: %v\n", err)
+		return
+	}
+	defer ctrl.Close()
 
 	fmt.Println("🎮 [Remote] 远程遥控器已启动")
 	fmt.Printf("🔌 连接目标: %s\n", socketPath)
@@ -27,6 +32,8 @@ func main() {
 	fmt.Println("  p          -> 暂停/播放")
 	fmt.Println("  seek <秒>  -> 跳转 (如: seek 60)")
 	fmt.Println("  text <话>  -> 发送弹幕 (如: text 大家好)")
+	fmt.Println("  overlay    -> 显示同步状态面板 (测试数据)")
+	fmt.Println("  clear      -> 清除同步状态面板")
 	fmt.Println("  q          -> 退出遥控器")
 	fmt.Println("-------------------------------------------")
 
@@ -76,6 +83,19 @@ func main() {
 			}
 			fmt.Printf("💬 发送弹幕: %s\n", arg)
 			err = ctrl.ShowText(arg, 3000)
+
+		case "overlay":
+			fmt.Println("🎨 显示同步状态面板...")
+			states := map[string]mpv.PeerSyncState{
+				"UserA": {Name: "UserA", IsReady: true},
+				"UserB": {Name: "UserB", IsReady: false, Buffering: 45, StatusText: "Buffering"},
+				"UserC": {Name: "UserC", IsReady: false, Buffering: 0, StatusText: "Seeking"},
+			}
+			err = ctrl.DrawSyncOverlay(states)
+
+		case "clear":
+			fmt.Println("🧹 清除同步状态面板...")
+			err = ctrl.ClearSyncOverlay()
 
 		case "q", "exit":
 			fmt.Println("👋 退出遥控器")
