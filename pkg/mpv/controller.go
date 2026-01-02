@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 type Controller struct {
@@ -99,4 +100,51 @@ func (c *Controller) Pause() error {
 // Play 开始/继续播放
 func (c *Controller) Play() error {
 	return c.sendCommand("set_property", "pause", false)
+}
+
+func (c *Controller) GetDuration() (float64, error) {
+	// 使用临时连接，避免干扰主连接
+	conn, err := net.Dial("unix", c.SocketPath)
+	if err != nil {
+		return 0, fmt.Errorf("连接 MPV 失败: %w", err)
+	}
+	defer conn.Close()
+
+	// 设置超时
+	conn.SetDeadline(time.Now().Add(2 * time.Second))
+
+	// 发送查询命令
+	cmd := `{"command": ["get_property", "duration"]}` + "\n"
+	if _, err := conn.Write([]byte(cmd)); err != nil {
+		return 0, fmt.Errorf("发送命令失败: %w", err)
+	}
+
+	// 读取响应
+	decoder := json.NewDecoder(conn)
+	var response struct {
+		Data  interface{} `json:"data"` // 可能是 float64 或 null
+		Error string      `json:"error"`
+	}
+
+	if err := decoder.Decode(&response); err != nil {
+		return 0, fmt.Errorf("解析响应失败: %w", err)
+	}
+
+	// 检查错误
+	if response.Error != "" && response.Error != "success" {
+		return 0, fmt.Errorf("MPV 错误: %s", response.Error)
+	}
+
+	// 检查数据
+	if response.Data == nil {
+		return 0, fmt.Errorf("视频未加载完成，时长未知")
+	}
+
+	// 转换为 float64
+	duration, ok := response.Data.(float64)
+	if !ok {
+		return 0, fmt.Errorf("时长格式错误: %T", response.Data)
+	}
+
+	return duration, nil
 }

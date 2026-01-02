@@ -85,3 +85,12 @@ func (m *MQTTClient) Close() {
 		m.client.Disconnect(250)
 	}
 }
+
+func (m *MQTTClient) GetClient() mqtt.Client {
+	return m.client
+}
+
+// GetTopic 获取主题
+func (m *MQTTClient) GetTopic() string {
+	return m.topic
+}
