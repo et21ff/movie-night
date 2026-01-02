@@ -13,6 +13,10 @@ import (
 	"sort"
 	"time"
 
+	"movie-night/config"
+	"movie-night/pkg/mpv"
+	"movie-night/sync"
+
 	"github.com/anacrolix/torrent"
 )
 
@@ -37,6 +41,13 @@ type MPVEvent struct {
 	Data  interface{} `json:"data"` // Data 可能是数字(时间)也可能是布尔(暂停)
 	Error string      `json:"error"`
 }
+
+var (
+	isController  bool
+	mqttClient    *sync.MQTTClient
+	syncer        *sync.Syncer
+	mpvController *mpv.Controller
+)
 
 func main() {
 	// 1. 启动 P2P 引擎
@@ -95,7 +106,49 @@ func main() {
 	// 7. (复刻你的 awk 脚本) 实时推送状态到 MPV
 	// 等待 MPV 启动并创建 Socket
 	time.Sleep(2 * time.Second)
+
+	if err := initMQTTFollower(); err != nil {
+		log.Printf("⚠️  MQTT 初始化失败: %v", err)
+		log.Println("继续运行，但无同步功能")
+	}
+
 	pushStatsToMPV(t)
+}
+func initMQTTFollower() error {
+	fmt.Println("📡 初始化 MQTT 同步...\n")
+
+	// 1. 加载配置
+	cfg := config.Default()
+
+	// 2. 创建 MQTT 客户端
+	mqttClient, err := sync.NewMQTTClient(sync.MQTTConfig{
+		Broker:   cfg.MQTTBroker,
+		ClientID: fmt.Sprintf("video-follower-%d", time.Now().Unix()),
+		Topic:    cfg.MQTTTopic,
+	})
+	if err != nil {
+		return fmt.Errorf("MQTT 连接失败: %w", err)
+	}
+
+	// 3. 创建 MPV 控制器
+	mpvController, err := mpv.NewController(socketPath)
+	if err != nil {
+		return fmt.Errorf("MPV 控制器创建失败: %w", err)
+	}
+
+	// 4. 创建同步器
+	syncer := sync.NewSyncer(mpvController, cfg.VideoDuration)
+	syncer.Start()
+
+	// 5. 订阅 MQTT
+	if err := mqttClient.Subscribe(syncer.HandleStatus); err != nil {
+		return fmt.Errorf("订阅失败: %w", err)
+	}
+
+	fmt.Println("✅ MQTT 同步已启动")
+	fmt.Println("📺 等待控制命令...\n")
+
+	return nil
 }
 
 // startMPV 启动前端播放器

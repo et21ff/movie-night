@@ -91,3 +91,12 @@ func (c *Controller) Seek(seconds float64, mode string) error {
 func (c *Controller) ShowText(text string, duration int) error {
 	return c.sendCommand("show-text", text, duration)
 }
+
+func (c *Controller) Pause() error {
+	return c.sendCommand("set_property", "pause", true)
+}
+
+// Play 开始/继续播放
+func (c *Controller) Play() error {
+	return c.sendCommand("set_property", "pause", false)
+}
