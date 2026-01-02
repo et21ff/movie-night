@@ -1,43 +1,68 @@
 package main
 
 import (
-    "fmt"
-    "time"
+	"encoding/json"
+	"fmt"
+	"math/rand"
+	"time"
 
-    mqtt "github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+// 播放状态
+type PlayStatus struct {
+	Timestamp float64 `json:"timestamp"` // 时间轴
+	Paused    bool    `json:"paused"`    // 是否暂停
+}
+
 func main() {
-    fmt.Println("🚀 Server 启动")
+	fmt.Println("🎬 视频播放控制器启动\n")
 
-    // 连接 MQTT Broker
-    opts := mqtt.NewClientOptions()
-    opts.AddBroker("tcp://broker-cn.emqx.io:1883")
-    opts.SetClientID("server-1")
+	// 随机数种子
+	rand.Seed(time.Now().UnixNano())
 
-    client := mqtt.NewClient(opts)
-    if token := client.Connect(); token.Wait() && token.Error() != nil {
-        panic(token.Error())
-    }
+	// 连接 MQTT
+	opts := mqtt.NewClientOptions()
+	opts.AddBroker("tcp://broker-cn.emqx.io:1883")
+	opts.SetClientID("video-controller")
 
-    fmt.Println("✅ 已连接到 MQTT Broker")
-    fmt.Println("📡 开始发送消息到频道: video/sync\n")
+	client := mqtt.NewClient(opts)
+	if token := client.Connect(); token.Wait() && token.Error() != nil {
+		panic(token.Error())
+	}
 
-    // 持续发送时间轴
-    currentTime := 0.0
+	fmt.Println("✅ 已连接到 MQTT Broker")
+	fmt.Println("📡 发送频道: video/control\n")
 
-    for {
-        // 模拟视频播放，每秒增加 1 秒
-        currentTime += 1.0
+	// 每 10 秒发送一次
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 
-        message := fmt.Sprintf("当前时间: %.1f 秒", currentTime)
+	for {
+		<-ticker.C
 
-        // 发布到固定频道
-        token := client.Publish("video/sync", 0, false, message)
-        token.Wait()
+		// 生成随机状态
+		status := PlayStatus{
+			Timestamp: rand.Float64() * 100, // 0-100 随机
+			Paused:    rand.Intn(2) == 0,    // 随机 true/false
+		}
 
-        fmt.Printf("📤 发送: %s\n", message)
+		// 转 JSON
+		jsonData, _ := json.Marshal(status)
 
-        time.Sleep(1 * time.Second)
-    }
+		// 发布
+		token := client.Publish("video/control", 1, true, jsonData)
+		token.Wait()
+
+		// 打印
+		pausedStr := "播放中 ▶️"
+		if status.Paused {
+			pausedStr = "暂停 ⏸️"
+		}
+
+		fmt.Printf("📤 [%s] 时间轴: %.2f 秒, 状态: %s\n",
+			time.Now().Format("15:04:05"),
+			status.Timestamp,
+			pausedStr)
+	}
 }

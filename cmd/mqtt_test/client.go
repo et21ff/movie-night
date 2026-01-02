@@ -1,41 +1,68 @@
 package main
 
 import (
-    "fmt"
+	"encoding/json"
+	"fmt"
+	"math/rand"
+	"time"
 
-    mqtt "github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+// 播放状态
+type PlayStatus struct {
+	Timestamp float64 `json:"timestamp"` // 时间轴
+	Paused    bool    `json:"paused"`    // 是否暂停
+}
+
 func main() {
-    fmt.Println("🎬 Client 启动")
+	fmt.Println("🎬 视频播放控制器启动\n")
 
-    // 连接 MQTT Broker
-    opts := mqtt.NewClientOptions()
-    opts.AddBroker("tcp://broker-cn.emqx.io:1883")
-    opts.SetClientID("client-1")
+	// 随机数种子
+	rand.Seed(time.Now().UnixNano())
 
-    client := mqtt.NewClient(opts)
-    if token := client.Connect(); token.Wait() && token.Error() != nil {
-        panic(token.Error())
-    }
+	// 连接 MQTT
+	opts := mqtt.NewClientOptions()
+	opts.AddBroker("tcp://broker-cn.emqx.io:1883")
+	opts.SetClientID("video-controller")
 
-    fmt.Println("✅ 已连接到 MQTT Broker")
-    fmt.Println("📡 订阅频道: video/sync\n")
+	client := mqtt.NewClient(opts)
+	if token := client.Connect(); token.Wait() && token.Error() != nil {
+		panic(token.Error())
+	}
 
-    // 订阅固定频道
-    topic := "video/sync"
+	fmt.Println("✅ 已连接到 MQTT Broker")
+	fmt.Println("📡 发送频道: video/control\n")
 
-    token := client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
-        fmt.Printf("📥 收到: %s\n", string(msg.Payload()))
-    })
-    token.Wait()
+	// 每 10 秒发送一次
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 
-    if token.Error() != nil {
-        panic(token.Error())
-    }
+	for {
+		<-ticker.C
 
-    fmt.Println("⏳ 等待消息...\n")
+		// 生成随机状态
+		status := PlayStatus{
+			Timestamp: rand.Float64() * 100, // 0-100 随机
+			Paused:    rand.Intn(2) == 0,    // 随机 true/false
+		}
 
-    // 保持运行
-    select {}
+		// 转 JSON
+		jsonData, _ := json.Marshal(status)
+
+		// 发布
+		token := client.Publish("video/control", 1, true, jsonData)
+		token.Wait()
+
+		// 打印
+		pausedStr := "播放中 ▶️"
+		if status.Paused {
+			pausedStr = "暂停 ⏸️"
+		}
+
+		fmt.Printf("📤 [%s] 时间轴: %.2f 秒, 状态: %s\n",
+			time.Now().Format("15:04:05"),
+			status.Timestamp,
+			pausedStr)
+	}
 }
