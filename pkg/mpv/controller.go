@@ -16,7 +16,7 @@ type Controller struct {
 }
 
 func NewController(socketPath string) (*Controller, error) {
-	conn, err := net.Dial("unix", socketPath)
+	conn, err := DialSocket(socketPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to MPV: %w", err)
 	}
@@ -104,7 +104,7 @@ func (c *Controller) Play() error {
 
 func (c *Controller) GetDuration() (float64, error) {
 	// 使用临时连接，避免干扰主连接
-	conn, err := net.Dial("unix", c.SocketPath)
+	conn, err := DialSocket(c.SocketPath)
 	if err != nil {
 		return 0, fmt.Errorf("连接 MPV 失败: %w", err)
 	}

@@ -1,5 +1,7 @@
 package config
 
+import "movie-night/pkg/mpv"
+
 // Config 应用配置
 type Config struct {
 	// P2P 配置
@@ -32,7 +34,7 @@ func Default() *Config {
 		StreamPort: 8888,
 
 		// MPV
-		MPVSocketPath: "/tmp/mpv-socket",
+		MPVSocketPath: mpv.DefaultSocketPath(),
 		VideoDuration: 0, // 0 表示不限制
 
 		// MQTT

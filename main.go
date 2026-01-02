@@ -19,6 +19,11 @@ func main() {
 	flag.BoolVar(&isController, "controller", false, "作为控制端（房主）运行")
 	flag.Parse()
 
+	// 检查 MPV 是否安装
+	if err := mpv.CheckMPV(); err != nil {
+		log.Fatal(err)
+	}
+
 	if isController {
 		fmt.Println("🎬 运行模式: 控制端（房主）\n")
 	} else {

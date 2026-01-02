@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"runtime"
 	"time"
 
 	"github.com/anacrolix/torrent"
+	"movie-night/pkg/mpv"
 )
 
 // StatsPusher 统计推送器
@@ -29,15 +29,9 @@ func (s *StatsPusher) Start() error {
 	var conn net.Conn
 	var err error
 
-	// Windows 跳过
-	if runtime.GOOS == "windows" {
-		fmt.Println("⚠️  Windows 不支持 Unix Socket，跳过 OSD 统计")
-		return nil
-	}
-
 	// 连接 MPV IPC
 	for i := 0; i < 10; i++ {
-		conn, err = net.Dial("unix", s.socketPath)
+		conn, err = mpv.DialSocket(s.socketPath)
 		if err == nil {
 			break
 		}

@@ -16,10 +16,8 @@ type LaunchConfig struct {
 
 // Launch 启动 MPV 播放器（阻塞）
 func Launch(cfg LaunchConfig) error {
-	// 删除旧 Socket
-	if _, err := os.Stat(cfg.SocketPath); err == nil {
-		os.Remove(cfg.SocketPath)
-	}
+	// 清理旧 Socket（跨平台）
+	CleanupSocket(cfg.SocketPath)
 
 	args := []string{
 		cfg.VideoURL,

@@ -33,7 +33,7 @@ func NewMonitor(socketPath string) (*Monitor, error) {
 	var err error
 
 	for i := 0; i < 20; i++ {
-		conn, err = net.Dial("unix", socketPath)
+		conn, err = DialSocket(socketPath)
 		if err == nil {
 			break
 		}
