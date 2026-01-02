@@ -3,28 +3,24 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
-	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 // 播放状态
 type PlayStatus struct {
-	Timestamp float64 `json:"timestamp"` // 时间轴
-	Paused    bool    `json:"paused"`    // 是否暂停
+	Timestamp float64 `json:"timestamp"`
+	Paused    bool    `json:"paused"`
 }
 
 func main() {
-	fmt.Println("🎬 视频播放控制器启动\n")
-
-	// 随机数种子
-	rand.Seed(time.Now().UnixNano())
+	fmt.Println("📺 视频客户端启动\n")
 
 	// 连接 MQTT
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker("tcp://broker-cn.emqx.io:1883")
-	opts.SetClientID("video-controller")
+	opts.SetClientID("video-client-1") // 多个客户端改这里
+	opts.SetCleanSession(false)        // 保存离线消息
 
 	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
@@ -32,37 +28,34 @@ func main() {
 	}
 
 	fmt.Println("✅ 已连接到 MQTT Broker")
-	fmt.Println("📡 发送频道: video/control\n")
+	fmt.Println("📡 订阅频道: video/control\n")
 
-	// 每 10 秒发送一次
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		<-ticker.C
-
-		// 生成随机状态
-		status := PlayStatus{
-			Timestamp: rand.Float64() * 100, // 0-100 随机
-			Paused:    rand.Intn(2) == 0,    // 随机 true/false
+	// 订阅
+	token := client.Subscribe("video/control", 1, func(c mqtt.Client, m mqtt.Message) {
+		var status PlayStatus
+		if err := json.Unmarshal(m.Payload(), &status); err != nil {
+			fmt.Println("❌ 解析失败:", err)
+			return
 		}
 
-		// 转 JSON
-		jsonData, _ := json.Marshal(status)
-
-		// 发布
-		token := client.Publish("video/control", 1, true, jsonData)
-		token.Wait()
-
-		// 打印
+		// 显示接收到的状态
 		pausedStr := "播放中 ▶️"
 		if status.Paused {
 			pausedStr = "暂停 ⏸️"
 		}
 
-		fmt.Printf("📤 [%s] 时间轴: %.2f 秒, 状态: %s\n",
-			time.Now().Format("15:04:05"),
+		fmt.Printf("📥 同步: 时间轴 %.2f 秒, 状态: %s\n",
 			status.Timestamp,
 			pausedStr)
+	})
+
+	token.Wait()
+	if token.Error() != nil {
+		panic(token.Error())
 	}
+
+	fmt.Println("⏳ 等待控制器消息...\n")
+
+	// 保持运行
+	select {}
 }
