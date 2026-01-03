@@ -40,6 +40,16 @@ func NewClient(cfg Config) (*Client, error) {
 		client.Close()
 		return nil, fmt.Errorf("添加磁力链失败: %w", err)
 	}
+	trackers := []string{
+		"udp://tracker.opentrackr.org:6969/announce",
+		"udp://tracker.openbittorrent.com:6969/announce",
+		"udp://tracker1.bt.krim.net:6969/announce",
+	}
+
+	for _, trackerURL := range trackers {
+		t.AddTrackers([][]string{{trackerURL}})
+		fmt.Printf("✅ [P2P] 已添加 Tracker: %s\n", trackerURL)
+	}
 
 	fmt.Println("🔍 [P2P] 获取元数据...")
 	<-t.GotInfo()

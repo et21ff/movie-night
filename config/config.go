@@ -26,7 +26,7 @@ type Config struct {
 func Default() *Config {
 	return &Config{
 		// P2P 默认值
-		MagnetLink: "magnet:?xt=urn:btih:JEJJEE6LGDVRMHT7XVJGJ74BKVW6WL2M&dn=&tr=http%3A%2F%2F104.143.10.186%3A8000%2Fannounce&tr=udp%3A%2F%2F104.143.10.186%3A8000%2Fannounce",
+		MagnetLink: "magnet:?xt=urn:btih:KSG3DCQYYQS6WQKWVBMTPLBU57WSGZKJ",
 		DataDir:    "./downloads",
 		MaxConns:   50,
 
