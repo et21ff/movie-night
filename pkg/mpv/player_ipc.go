@@ -87,3 +87,11 @@ func (p *IPCPlayer) Close() error {
 	p.monitor.Stop()
 	return p.ctrl.Close()
 }
+
+func (p *IPCPlayer) LoadFile(url string) error {
+	// 方式 1: 如果 Controller 有 SendCommand 方法
+	return nil // this should not be called in unix
+
+	// 方式 2: 如果视频已在启动时加载，返回 nil
+	// return nil
+}

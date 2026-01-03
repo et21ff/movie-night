@@ -15,8 +15,8 @@ import (
 type Client struct {
 	client       *torrent.Client
 	torrent      *torrent.Torrent
-	dataDir      string // 新增：记录当前客户端使用的缓存目录
-	cleanOnClose bool   // 新增：关闭时是否清理缓存
+	dataDir      string
+	cleanOnClose bool
 }
 
 // Config P2P 配置
@@ -24,7 +24,7 @@ type Config struct {
 	DataDir      string
 	MaxConns     int
 	MagnetLink   string
-	CleanOnClose bool // 新增：关闭时清空缓存目录
+	CleanOnClose bool
 }
 
 func NewClient(cfg Config) (*Client, error) {
@@ -32,23 +32,22 @@ func NewClient(cfg Config) (*Client, error) {
 	tcfg := torrent.NewDefaultClientConfig()
 
 	tcfg.DataDir = cfg.DataDir
-	tcfg.EstablishedConnsPerTorrent = cfg.MaxConns
-	tcfg.DisableAggressiveUpload = true
-	tcfg.EstablishedConnsPerTorrent = 80 // 每个种子最大连接数
-	tcfg.HalfOpenConnsPerTorrent = 40    // 半开连接数
-	tcfg.TotalHalfOpenConns = 100        // 总半开连接数
-	// ========== 功能开关 ==========
-	tcfg.Seed = true // ✅ 做种，有助于获取更多 peers
-	// tcfg.NoDHT = false                    // ✅ 启用 DHT
-	// tcfg.DisablePEX = false               // ✅ 启用 PEX（Peer Exchange）
-	// tcfg.DisableUTP = false               // ✅ 启用 uTP
-	// tcfg.DisableTCP = false               // ✅ 启用 TCP
-	// tcfg.DisableIPv6 = false              // ✅ 启用 IPv6
-	// tcfg.DisableAcceptRateLimiting = true // ✅ 禁用连接速率限制
+	tcfg.EstablishedConnsPerTorrent = 80
+	tcfg.HalfOpenConnsPerTorrent = 40
+	tcfg.TotalHalfOpenConns = 100
 
-	// ========== 速度设置 ==========
-	tcfg.DownloadRateLimiter = rate.NewLimiter(rate.Inf, 0) // 无限下载速度
-	tcfg.UploadRateLimiter = rate.NewLimiter(rate.Inf, 0)   // 无限上传速度
+	// 功能开关
+	tcfg.Seed = true
+	tcfg.NoDHT = false
+	tcfg.DisablePEX = false
+	tcfg.DisableUTP = false
+	tcfg.DisableTCP = false
+	tcfg.DisableIPv6 = false
+	tcfg.DisableAcceptRateLimiting = true
+
+	// 速度设置
+	tcfg.DownloadRateLimiter = rate.NewLimiter(rate.Inf, 0)
+	tcfg.UploadRateLimiter = rate.NewLimiter(rate.Inf, 0)
 
 	fmt.Println("🚀 [P2P] 启动引擎...")
 	client, err := torrent.NewClient(tcfg)
@@ -56,7 +55,7 @@ func NewClient(cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("创建客户端失败: %w", err)
 	}
 
-	// 写死 trackers 并拼接到磁力链
+	// Trackers
 	magnet := cfg.MagnetLink
 	trackers := []string{
 		"udp://tracker.opentrackr.org:1337/announce",
@@ -87,6 +86,10 @@ func NewClient(cfg Config) (*Client, error) {
 	fmt.Println("🔍 [P2P] 获取元数据...")
 	<-t.GotInfo()
 
+	// ✅ 改动 1: 添加这一行，开始下载
+	t.DownloadAll()
+	fmt.Println("📥 [P2P] 开始下载...")
+
 	return &Client{
 		client:       client,
 		torrent:      t,
@@ -106,15 +109,20 @@ func (c *Client) GetLargestFile() *torrent.File {
 		return files[i].Length() > files[j].Length()
 	})
 
-	return files[0]
+	largest := files[0]
+
+	// ✅ 改动 2: 添加这一行，确保文件被标记下载
+	largest.Download()
+
+	return largest
 }
 
-// GetTorrent 获取原始 Torrent 对象（用于统计）
+// GetTorrent 获取原始 Torrent 对象
 func (c *Client) GetTorrent() *torrent.Torrent {
 	return c.torrent
 }
 
-// Close 关闭客户端（可选清空缓存目录）
+// Close 关闭客户端
 func (c *Client) Close() error {
 	c.client.Close()
 	if c.cleanOnClose {
@@ -125,11 +133,10 @@ func (c *Client) Close() error {
 	return nil
 }
 
-// 清空目录内容，但保留目录本身
+// 清空目录内容
 func emptyDir(dir string) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		// 目录不存在则视为已清空
 		if os.IsNotExist(err) {
 			return nil
 		}
