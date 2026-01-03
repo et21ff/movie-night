@@ -10,15 +10,15 @@ import (
 
 // Syncer 同步器
 type Syncer struct {
-	mpvCtrl   *mpv.Controller
+	mpvCtrl   mpv.Player
 	validator *Validator
 	statusCh  chan model.PlayStatus
 }
 
 // NewSyncer 创建同步器
-func NewSyncer(mpvCtrl *mpv.Controller, maxDuration float64) *Syncer {
+func NewSyncer(player mpv.Player, maxDuration float64) *Syncer {
 	return &Syncer{
-		mpvCtrl:   mpvCtrl,
+		mpvCtrl:   player,
 		validator: NewValidator(maxDuration),
 		statusCh:  make(chan model.PlayStatus, 1), // 只保留最新状态
 	}

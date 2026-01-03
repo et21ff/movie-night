@@ -6,25 +6,24 @@ import (
 	"time"
 
 	"movie-night/model"
-	"movie-night/pkg/mpv"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-// Controller 控制端
+// Controller 控制端（房主）
 type Controller struct {
-	mqttClient mqtt.Client // ← 改为原始 client
-	topic      string      // ← 添加 topic
-	monitor    *mpv.Monitor
+	mqttClient mqtt.Client // ← 原始 MQTT client
+	topic      string      // ← MQTT 主题
+	statusCh   <-chan model.PlayStatus
 	interval   time.Duration
 }
 
 // NewController 创建控制端
-func NewController(client mqtt.Client, topic string, monitor *mpv.Monitor, interval time.Duration) *Controller {
+func NewController(client mqtt.Client, topic string, statusCh <-chan model.PlayStatus, interval time.Duration) *Controller {
 	return &Controller{
 		mqttClient: client,
 		topic:      topic,
-		monitor:    monitor,
+		statusCh:   statusCh,
 		interval:   interval,
 	}
 }
@@ -36,13 +35,12 @@ func (c *Controller) Start() {
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
 
-	statusCh := c.monitor.GetStatusChannel()
 	var currentStatus model.PlayStatus
 
 	for {
 		select {
 		case <-ticker.C:
-			// ===== 使用原始方式发布 =====
+			// ===== 手动序列化并发布 =====
 			jsonData, err := json.Marshal(currentStatus)
 			if err != nil {
 				fmt.Printf("❌ [Controller] 序列化失败: %v\n", err)
@@ -62,8 +60,14 @@ func (c *Controller) Start() {
 				fmt.Printf("📤 [Controller] 广播: %.2f秒 %s\n", currentStatus.Timestamp, emoji)
 			}
 
-		case status := <-statusCh:
+		case status := <-c.statusCh:
+			// 实时更新本地状态
 			currentStatus = status
 		}
 	}
+}
+
+// Stop 停止控制端
+func (c *Controller) Stop() {
+	// 清理逻辑（如果需要）
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/anacrolix/torrent"
@@ -14,6 +15,9 @@ import (
 type StatsPusher struct {
 	torrent    *torrent.Torrent
 	socketPath string
+	mu         sync.Mutex
+	running    bool
+	stopCh     chan struct{}
 }
 
 // NewStatsPusher 创建统计推送器
@@ -89,4 +93,18 @@ func (s *StatsPusher) Start() error {
 	}
 
 	return nil
+}
+
+func (s *StatsPusher) Stop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.running {
+		return
+	}
+	s.running = false
+
+	if s.stopCh != nil {
+		close(s.stopCh)
+	}
 }

@@ -24,7 +24,7 @@ type Config struct {
 func Default() *Config {
 	return &Config{
 		// P2P 默认值
-		MagnetLink: "magnet:?xt=urn:btih:JEJJEE6LGDVRMHT7XVJGJ74BKVW6WL2M&dn=&tr=http%3A%2F%2F104.143.10.186%3A8000%2Fannounce&tr=udp%3A%2F%2F104.143.10.186%3A8000%2Fannounce",
+		MagnetLink: "magnet:?xt=urn:btih:6926967ed2d4a6112a06594e6b05eedc215424d6&dn=%5BToonsHub%5D%20Millennium%20Actress%20%282002%29%20REPACK%202160p%20HMAX%20WEB-DL%20DDP5.1%20H.265%2010bit%20%28Sennen%20Joyuu%2C%20Dual-Audio%2C%20Multi-Subs%29&tr=http%3A%2F%2Fnyaa.tracker.wf%3A7777%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce",
 		DataDir:    "./downloads",
 		MaxConns:   50,
 

@@ -102,6 +102,10 @@ func (c *Controller) Play() error {
 	return c.sendCommand("set_property", "pause", false)
 }
 
+func (c *Controller) Stop() error {
+	return c.sendCommand("set_property", "pause", true)
+}
+
 func (c *Controller) GetDuration() (float64, error) {
 	// 使用临时连接，避免干扰主连接
 	conn, err := net.Dial("unix", c.SocketPath)

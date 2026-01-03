@@ -12,10 +12,10 @@ type Follower struct {
 	mqttClient *MQTTClient
 }
 
-// NewFollower 创建跟随端
-func NewFollower(mpvCtrl *mpv.Controller, mqttClient *MQTTClient, maxDuration float64) *Follower {
+// NewFollowerWithPlayer 创建跟随端
+func NewFollowerWithPlayer(player mpv.Player, mqttClient *MQTTClient, maxDuration float64) *Follower {
 	return &Follower{
-		syncer:     NewSyncer(mpvCtrl, maxDuration),
+		syncer:     NewSyncer(player, maxDuration),
 		mqttClient: mqttClient,
 	}
 }
